@@ -19,6 +19,8 @@ html,
 body {
   margin: 0;
   min-height: 100%;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -44,6 +46,7 @@ pre {
 .page-wrap {
   position: relative;
   isolation: isolate;
+  overflow-x: clip;
 }
 
 .page-wrap::before,
@@ -66,7 +69,6 @@ pre {
     );
   filter: blur(70px);
   opacity: 0.65;
-  animation: drift 18s ease-in-out infinite alternate;
 }
 
 .page-wrap::after {
@@ -76,16 +78,6 @@ pre {
   background-size: 32px 32px;
   mask-image: radial-gradient(circle at center, black 55%, transparent 100%);
   opacity: 0.45;
-}
-
-@keyframes drift {
-  from {
-    transform: translate3d(-2%, -1%, 0) scale(1);
-  }
-
-  to {
-    transform: translate3d(2%, 1%, 0) scale(1.08);
-  }
 }
 
 .glass-panel {
@@ -113,30 +105,26 @@ pre {
   background: rgba(2, 6, 23, 0.74);
 }
 
-.shimmer {
-  position: relative;
-  overflow: hidden;
-}
-
-.shimmer::after {
-  content: "";
+.shared-highlight {
   position: absolute;
-  top: -100%;
-  left: -40%;
-  width: 20%;
-  height: 300%;
-  transform: rotate(18deg);
+  top: -20%;
+  left: -24%;
+  width: 22%;
+  height: 160%;
+  transform: skewX(-18deg);
   background: linear-gradient(
     180deg,
-    transparent,
-    rgba(255, 255, 255, 0.16),
-    transparent
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 45%,
+    rgba(255, 255, 255, 0.18) 55%,
+    transparent 100%
   );
-  animation: shimmer 5s linear infinite;
+  animation: shared-sweep 6s linear infinite;
+  will-change: transform;
 }
 
-@keyframes shimmer {
+@keyframes shared-sweep {
   to {
-    left: 130%;
+    transform: translateX(620%) skewX(-18deg);
   }
 }
