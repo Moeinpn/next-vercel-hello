@@ -129,6 +129,7 @@ export default function OctagonNavigator() {
   const panelWidth = 250;
   const panelHeight = 260;
   const radius = panelWidth / (2 * Math.tan(Math.PI / 8));
+  const surpriseDurationMs = 950;
 
   const updateRotation = (nextRotation: number) => {
     rotationRef.current = nextRotation;
@@ -160,7 +161,7 @@ export default function OctagonNavigator() {
       }
 
       updateRotation(rotationRef.current + velocity * dt);
-      velocity *= Math.pow(0.992, dt);
+      velocity *= Math.pow(0.996, dt);
       frameRef.current = window.requestAnimationFrame(step);
     };
 
@@ -194,6 +195,13 @@ export default function OctagonNavigator() {
     if (surpriseActive) {
       return;
     }
+
+    const target = event.target as HTMLElement;
+    if (target.closest("a")) {
+      blockClickRef.current = false;
+      return;
+    }
+
     stopInertia();
     blockClickRef.current = false;
     dragRef.current = {
@@ -235,7 +243,7 @@ export default function OctagonNavigator() {
     dragRef.current.dragDistance = dragDistance;
     dragRef.current.moved = dragDistance > 6;
 
-    updateRotation(drag.startRotation + deltaX * 0.26);
+    updateRotation(drag.startRotation + deltaX * 0.56);
   };
 
   const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -250,7 +258,7 @@ export default function OctagonNavigator() {
 
     blockClickRef.current = drag.dragDistance > 6;
 
-    const flingVelocity = drag.velocity * 0.42;
+    const flingVelocity = drag.velocity * 1.1;
     if (Math.abs(flingVelocity) > 0.02) {
       startInertia(flingVelocity);
     }
@@ -293,9 +301,12 @@ export default function OctagonNavigator() {
 
         <div className="absolute inset-0 grid place-items-center [perspective:1700px]">
           <div
-            className="relative h-[420px] w-[260px] transform-3d transition-transform duration-75 ease-out sm:h-[460px] sm:w-[300px]"
+            className="relative transform-3d [will-change:transform]"
             style={{
+              width: `${panelWidth}px`,
+              height: `${panelHeight}px`,
               transform: `rotateX(-11deg) rotateY(${rotation}deg)`,
+              transformOrigin: "50% 50%",
             }}
           >
             {topics.map((topic, index) => {
@@ -314,13 +325,14 @@ export default function OctagonNavigator() {
                       blockClickRef.current = false;
                     }
                   }}
-                  className={`glass-panel absolute left-0 top-0 block rounded-2xl p-4 transition-all duration-900 ease-[cubic-bezier(.2,.9,.2,1)] hover:border-cyan-300/50 ${
+                  className={`glass-panel absolute left-0 top-0 block rounded-2xl p-4 transition-all ease-[cubic-bezier(.2,.9,.2,1)] hover:border-cyan-300/50 ${
                     surpriseActive ? "pointer-events-none opacity-0" : "opacity-100"
                   }`}
                   style={{
                     width: `${panelWidth}px`,
                     height: `${panelHeight}px`,
                     transform: surpriseActive ? surpriseTransform : baseTransform,
+                    transitionDuration: `${surpriseDurationMs}ms`,
                   }}
                 >
                   <div className="mb-4 flex items-start justify-between">
