@@ -14,21 +14,22 @@ const fragmentShaderSource = `
 precision mediump float;
 
 uniform vec2 u_resolution;
-uniform float u_time;
 uniform vec2 u_pointer;
 
 void main() {
-  vec2 uv = (gl_FragCoord.xy * 2.0 - u_resolution.xy) / min(u_resolution.x, u_resolution.y);
-  vec2 pointer = (u_pointer * 2.0) - 1.0;
-  float distanceToPointer = length(uv - pointer);
+  vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+  vec2 pointer = vec2(u_pointer.x, 1.0 - u_pointer.y);
+  vec2 delta = uv - pointer;
+  delta.x *= u_resolution.x / u_resolution.y;
+  float dist = length(delta);
 
-  float swirl = sin((uv.x + u_time * 0.4) * 7.0) * cos((uv.y - u_time * 0.3) * 7.0);
-  float halo = 0.16 / (distanceToPointer + 0.12);
+  float glow = smoothstep(0.46, 0.02, dist);
+  float core = smoothstep(0.10, 0.0, dist);
 
-  vec3 base = vec3(0.05, 0.08, 0.16);
-  vec3 accentA = vec3(0.16, 0.52, 0.98);
-  vec3 accentB = vec3(0.18, 0.92, 0.92);
-  vec3 color = base + accentA * (0.5 + 0.5 * swirl) + accentB * halo;
+  vec3 base = vec3(0.03, 0.06, 0.12);
+  vec3 halo = vec3(0.12, 0.42, 0.86) * glow;
+  vec3 dot = vec3(0.40, 0.95, 0.95) * core;
+  vec3 color = base + halo + dot;
 
   gl_FragColor = vec4(color, 1.0);
 }
@@ -108,15 +109,9 @@ export default function WebGlLab() {
 
     const positionLocation = gl.getAttribLocation(program, "a_position");
     const resolutionLocation = gl.getUniformLocation(program, "u_resolution");
-    const timeLocation = gl.getUniformLocation(program, "u_time");
     const pointerLocation = gl.getUniformLocation(program, "u_pointer");
 
-    if (
-      positionLocation < 0 ||
-      !resolutionLocation ||
-      !timeLocation ||
-      !pointerLocation
-    ) {
+    if (positionLocation < 0 || !resolutionLocation || !pointerLocation) {
       setError("Could not access shader attributes/uniforms.");
       return;
     }
@@ -144,10 +139,17 @@ export default function WebGlLab() {
     let pointerX = 0.5;
     let pointerY = 0.5;
 
-    const onPointerMove = (event: PointerEvent) => {
+    const drawScene = () => {
+      gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+      gl.uniform2f(pointerLocation, pointerX, pointerY);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    };
+
+    const handlePointer = (event: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
-      pointerX = (event.clientX - rect.left) / rect.width;
-      pointerY = 1 - (event.clientY - rect.top) / rect.height;
+      pointerX = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+      pointerY = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+      drawScene();
     };
 
     const resize = () => {
@@ -161,35 +163,23 @@ export default function WebGlLab() {
       }
 
       gl.viewport(0, 0, canvas.width, canvas.height);
+      drawScene();
     };
-
-    canvas.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("resize", resize);
-    resize();
 
     gl.useProgram(program);
     gl.enableVertexAttribArray(positionLocation);
     gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
-    let frameId = 0;
-    const start = performance.now();
-
-    const render = () => {
-      const elapsed = (performance.now() - start) / 1000;
-      resize();
-      gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
-      gl.uniform1f(timeLocation, elapsed);
-      gl.uniform2f(pointerLocation, pointerX, pointerY);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-      frameId = window.requestAnimationFrame(render);
-    };
-
-    render();
+    canvas.addEventListener("pointerdown", handlePointer);
+    canvas.addEventListener("pointermove", handlePointer);
+    window.addEventListener("resize", resize);
+    resize();
+    drawScene();
 
     return () => {
-      window.cancelAnimationFrame(frameId);
       window.removeEventListener("resize", resize);
-      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerdown", handlePointer);
+      canvas.removeEventListener("pointermove", handlePointer);
       gl.deleteBuffer(buffer);
       gl.deleteShader(vertexShader);
       gl.deleteShader(fragmentShader);
@@ -201,7 +191,7 @@ export default function WebGlLab() {
     <section className="glass-panel rounded-2xl p-5 sm:p-6">
       <h2 className="text-lg font-semibold text-white">Live WebGL Shader Surface</h2>
       <p className="mt-2 text-sm leading-6 text-slate-300">
-        Move your pointer over the canvas to interact with the shader field.
+        Move your pointer over the canvas to track a static glow with no background animation.
       </p>
       <div className="mt-4 overflow-hidden rounded-2xl border border-slate-500/30 bg-slate-950/60">
         <canvas ref={canvasRef} className="h-72 w-full md:h-96" />
